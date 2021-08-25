@@ -1,5 +1,3 @@
-mod texture;
-
 use rand::thread_rng;
 use winit::{
     event::*,
@@ -13,7 +11,7 @@ fn main() {
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut state = pollster::block_on(State::new(&window));
+    let mut state = pollster::block_on(State::new(&window, false));
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -62,6 +60,14 @@ fn main() {
     });
 }
 
+enum RenderDevice {
+    Cpu,
+    Gpu {
+        compute_pipeline: wgpu::ComputePipeline,
+        compute_bind_group: wgpu::BindGroup,
+    },
+}
+
 pub struct State {
     surface: wgpu::Surface,
     device: wgpu::Device,
@@ -78,13 +84,14 @@ pub struct State {
 
     scene: Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Primative>, SimpleCamera>,
     renderer: ProgressiveRenderer,
+    render_device: RenderDevice,
     frame_number: u32,
 }
 
 // https://sotrh.github.io/learn-wgpu/beginner/tutorial2-swapchain/
 impl State {
     // Creating some of the wgpu types requires async code
-    async fn new(window: &Window) -> Self {
+    async fn new(window: &Window, use_gpu: bool) -> Self {
         let size = window.inner_size();
 
         let instance = wgpu::Instance::new(wgpu::BackendBit::PRIMARY);
@@ -129,7 +136,9 @@ impl State {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsage::STORAGE | wgpu::TextureUsage::COPY_DST,
+            usage: wgpu::TextureUsage::STORAGE
+                | wgpu::TextureUsage::COPY_DST
+                | wgpu::TextureUsage::COPY_SRC,
         }));
         let image_texture_view =
             Box::new(image_texture.create_view(&wgpu::TextureViewDescriptor::default()));
@@ -148,6 +157,63 @@ impl State {
         let scene = basic_scene();
         let renderer = ProgressiveRenderer::new(size.width as usize, size.height as usize, 5);
 
+        let render_device = if use_gpu {
+            dbg!("Making compute shader.");
+            let shader = device.create_shader_module(&wgpu::ShaderModuleDescriptor {
+                label: Some("Compute"),
+                flags: wgpu::ShaderFlags::all(),
+                source: wgpu::ShaderSource::Wgsl(include_str!("compute.wgsl").into()),
+            });
+
+            let compute_bind_group_layout =
+                device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+                    label: Some("texture_bind_group_layout"),
+                    entries: &[wgpu::BindGroupLayoutEntry {
+                        binding: 0,
+                        visibility: wgpu::ShaderStage::COMPUTE,
+                        ty: wgpu::BindingType::StorageTexture {
+                            access: wgpu::StorageTextureAccess::WriteOnly,
+                            view_dimension: wgpu::TextureViewDimension::D2,
+                            format: wgpu::TextureFormat::Rgba32Float,
+                        },
+                        count: None,
+                    }],
+                });
+
+            dbg!("Making compute pipeline.");
+            let compute_pipeline =
+                device.create_compute_pipeline(&wgpu::ComputePipelineDescriptor {
+                    label: Some("gpu_pipeline"),
+                    module: &shader,
+                    entry_point: "main",
+                    layout: Some(
+                        &device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+                            label: Some("gpu_pipeline_layout"),
+                            bind_group_layouts: &[&compute_bind_group_layout],
+                            push_constant_ranges: &[],
+                        }),
+                    ),
+                });
+
+            dbg!("Making compute bind group.");
+            let compute_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("gpu_bind_group"),
+                layout: &compute_bind_group_layout,
+                entries: &[wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: wgpu::BindingResource::TextureView(&image_texture_view),
+                }],
+            });
+
+            RenderDevice::Gpu {
+                compute_pipeline,
+                compute_bind_group,
+            }
+        } else {
+            RenderDevice::Cpu
+        };
+        dbg!("Done");
+
         Self {
             surface,
             device,
@@ -162,6 +228,7 @@ impl State {
             image_texture_view,
             scene,
             renderer,
+            render_device,
             frame_number: 0,
         }
     }
@@ -183,7 +250,9 @@ impl State {
             sample_count: 1,
             dimension: wgpu::TextureDimension::D2,
             format: wgpu::TextureFormat::Rgba32Float,
-            usage: wgpu::TextureUsage::STORAGE | wgpu::TextureUsage::COPY_DST,
+            usage: wgpu::TextureUsage::STORAGE
+                | wgpu::TextureUsage::COPY_DST
+                | wgpu::TextureUsage::COPY_SRC,
         });
         *self.image_texture_view = self
             .image_texture
@@ -208,33 +277,48 @@ impl State {
 
     fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
         dbg!(self.frame_number);
-
-        let mut rng = thread_rng();
-        self.queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: &self.image_texture,
-                mip_level: 0,
-                origin: wgpu::Origin3d::ZERO,
-            },
-            &self.renderer.render(&self.scene, &mut rng).as_bytes(),
-            wgpu::ImageDataLayout {
-                offset: 0,
-                bytes_per_row: std::num::NonZeroU32::new(4 * 4 * self.size.width),
-                rows_per_image: std::num::NonZeroU32::new(self.size.height),
-            },
-            wgpu::Extent3d {
-                width: self.size.width,
-                height: self.size.height,
-                depth_or_array_layers: 1,
-            },
-        );
-
-        let frame = self.swap_chain.get_current_frame()?.output;
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {
                 label: Some("Render Encoder"),
             });
+
+        let mut rng = thread_rng();
+        match &self.render_device {
+            RenderDevice::Cpu => {
+                self.queue.write_texture(
+                    wgpu::ImageCopyTexture {
+                        texture: &self.image_texture,
+                        mip_level: 0,
+                        origin: wgpu::Origin3d::ZERO,
+                    },
+                    self.renderer.render(&self.scene, &mut rng).as_bytes(),
+                    wgpu::ImageDataLayout {
+                        offset: 0,
+                        bytes_per_row: std::num::NonZeroU32::new(4 * 4 * self.size.width),
+                        rows_per_image: std::num::NonZeroU32::new(self.size.height),
+                    },
+                    wgpu::Extent3d {
+                        width: self.size.width,
+                        height: self.size.height,
+                        depth_or_array_layers: 1,
+                    },
+                );
+            }
+            RenderDevice::Gpu {
+                compute_pipeline,
+                compute_bind_group,
+            } => {
+                let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
+                    label: Some("Compute Pass"),
+                });
+                compute_pass.set_pipeline(&compute_pipeline);
+                compute_pass.set_bind_group(0, &compute_bind_group, &[]);
+                compute_pass.dispatch((self.size.width + 31) / 32, (self.size.height + 31) / 32, 1);
+            }
+        }
+
+        let frame = self.swap_chain.get_current_frame()?.output;
         {
             let mut render_pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("Render Pass"),
@@ -280,7 +364,7 @@ fn make_render_pipeline(
             label: Some("texture_bind_group_layout"),
             entries: &[wgpu::BindGroupLayoutEntry {
                 binding: 0,
-                visibility: wgpu::ShaderStage::FRAGMENT,
+                visibility: wgpu::ShaderStage::FRAGMENT | wgpu::ShaderStage::COMPUTE,
                 ty: wgpu::BindingType::StorageTexture {
                     access: wgpu::StorageTextureAccess::ReadOnly,
                     view_dimension: wgpu::TextureViewDimension::D2,
