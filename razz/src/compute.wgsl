@@ -1,5 +1,7 @@
 [[group(0), binding(0)]] 
 var out_texture: [[access(write)]] texture_storage_2d<rgba32float>;
+[[group(0), binding(1)]] 
+var in_texture: [[access(read)]] texture_storage_2d<rgba32float>;
 
 [[stage(compute), workgroup_size(32, 32)]]
 fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
@@ -21,5 +23,6 @@ fn main([[builtin(global_invocation_id)]] global_id: vec3<u32>) {
 
     // let pixel_Color = ray_Color(r);
 
+    let pixel_color = textureLoad(in_texture, pixel_coordinates);
     textureStore(out_texture, pixel_coordinates, vec4<f32>(uv.x, uv.y, 0.25, 1.0));
 }
