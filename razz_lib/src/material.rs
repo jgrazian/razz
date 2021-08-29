@@ -12,14 +12,14 @@ pub enum ScatterResult<C: Color> {
 }
 
 #[derive(Debug)]
-pub enum SimpleMaterial {
+pub enum BasicMaterial {
     Lambertian { albedo: TextureKey },
     Metal { albedo: TextureKey, fuzz: Float },
     Dielectric { ir: Float },
     DiffuseLight { emit: TextureKey },
 }
 
-impl<C, T> Material<C, T> for SimpleMaterial
+impl<C, T> Material<C, T> for BasicMaterial
 where
     C: Color,
     T: Texture<C>,
@@ -56,7 +56,7 @@ where
     }
 }
 
-impl Default for SimpleMaterial {
+impl Default for BasicMaterial {
     fn default() -> Self {
         Self::Lambertian {
             albedo: TextureKey::default(),

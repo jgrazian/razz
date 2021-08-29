@@ -1,3 +1,5 @@
+use std::env::args;
+
 use rand::thread_rng;
 use wgpu::util::DeviceExt;
 use winit::{
@@ -9,10 +11,12 @@ use winit::{
 use razz_lib::*;
 
 fn main() {
+    let use_gpu = args().any(|a| a == "--gpu");
+
     let event_loop = EventLoop::new();
     let window = WindowBuilder::new().build(&event_loop).unwrap();
 
-    let mut state = pollster::block_on(State::new(&window, true));
+    let mut state = pollster::block_on(State::new(&window, use_gpu));
 
     event_loop.run(move |event, _, control_flow| match event {
         Event::WindowEvent {
@@ -91,7 +95,7 @@ pub struct State {
     render_data: RenderData,
     render_device: RenderDevice,
 
-    scene: Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Primative>, SimpleCamera>,
+    scene: Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera>,
     frame_number: u32,
 }
 
@@ -122,7 +126,6 @@ impl State {
             )
             .await
             .unwrap();
-        println!("{:?}", device.limits());
 
         let sc_desc = wgpu::SwapChainDescriptor {
             usage: wgpu::TextureUsage::RENDER_ATTACHMENT,
@@ -602,10 +605,9 @@ fn make_compute_pipeline(device: &wgpu::Device) -> (wgpu::ComputePipeline, wgpu:
     (compute_pipeline, compute_bind_group_layout)
 }
 
-fn basic_scene() -> Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Primative>, SimpleCamera>
-{
+fn basic_scene() -> Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera> {
     let aspect_ratio = 16.0 / 9.0;
-    let camera = SimpleCamera::new(
+    let camera = BasicCamera::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -1.0),
         90.0,
@@ -615,8 +617,8 @@ fn basic_scene() -> Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Prim
     );
 
     let mut world = World::default();
-    let texture = world.push_texture(SimpleTexture::default());
-    let material = world.push_material(SimpleMaterial::Lambertian { albedo: texture });
+    let texture = world.push_texture(BasicTexture::default());
+    let material = world.push_material(BasicMaterial::Lambertian { albedo: texture });
     let _ground = world.push_hittable(Primative::Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
@@ -628,7 +630,7 @@ fn basic_scene() -> Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Prim
         material,
     });
 
-    let scene: Scene<Rgba, SimpleTexture, SimpleMaterial, HittableList<Primative>, SimpleCamera> =
+    let scene: Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera> =
         Scene::new(world, camera);
 
     scene

@@ -6,7 +6,7 @@ use crate::traits::{Color, Texture};
 use crate::{Float, Point3, TextureKey};
 
 #[derive(Debug)]
-pub enum SimpleTexture {
+pub enum BasicTexture {
     Solid {
         color: Rgba,
     },
@@ -21,7 +21,7 @@ pub enum SimpleTexture {
     },
 }
 
-impl Default for SimpleTexture {
+impl Default for BasicTexture {
     fn default() -> Self {
         Self::Solid {
             color: Rgba::splat(0.5),
@@ -29,7 +29,7 @@ impl Default for SimpleTexture {
     }
 }
 
-impl<C> Texture<C> for SimpleTexture
+impl<C> Texture<C> for BasicTexture
 where
     C: Color,
 {

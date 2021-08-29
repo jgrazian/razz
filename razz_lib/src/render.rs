@@ -1,63 +1,8 @@
 use rand::Rng;
 
 use crate::image::Image;
-use crate::traits::{Color, HittableCollection, Material, Renderer, Sampler, Texture};
-use crate::{Float, Scene};
-
-#[derive(Debug)]
-pub struct SimpleRenderer {
-    width: usize,
-    height: usize,
-    max_ray_depth: usize,
-    samples_per_pixel: usize,
-    image: Image,
-}
-
-impl SimpleRenderer {
-    pub fn new(
-        width: usize,
-        height: usize,
-        max_ray_depth: usize,
-        samples_per_pixel: usize,
-    ) -> Self {
-        Self {
-            width,
-            height,
-            max_ray_depth,
-            samples_per_pixel,
-            image: Image::new(width, height),
-        }
-    }
-}
-
-impl<C, H, M, S, T> Renderer<C, H, M, S, T> for SimpleRenderer
-where
-    C: Color,
-    H: HittableCollection,
-    M: Material<C, T>,
-    S: Sampler,
-    T: Texture<C>,
-{
-    fn render(&mut self, scene: &Scene<C, T, M, H, S>, rng: &mut impl Rng) -> &Image {
-        // Render n passes over the image
-        for j in 0..self.height {
-            for i in 0..self.width {
-                let mut pixel_color: C = C::ZERO;
-                for _ in 0..self.samples_per_pixel {
-                    let sample_ray = scene.sampler.get_ray(i, j, self.width, self.height, rng);
-                    let sample_color = scene.world.ray_color(&sample_ray, rng, self.max_ray_depth);
-
-                    pixel_color = pixel_color + sample_color;
-                }
-                let pixel_rgb = pixel_color
-                    .gamma_correct(self.samples_per_pixel, 2.0)
-                    .to_rgba();
-                self.image.set_pixel_color(i, j, pixel_rgb);
-            }
-        }
-        &self.image
-    }
-}
+use crate::traits::{Color, Material, Renderer, Sampler, Texture};
+use crate::{Float, Hittable, Scene};
 
 #[derive(Debug)]
 pub struct ProgressiveRenderer {
@@ -80,13 +25,13 @@ impl ProgressiveRenderer {
     }
 }
 
-impl<C, H, M, S, T> Renderer<C, H, M, S, T> for ProgressiveRenderer
+impl<C, T, M, H, S> Renderer<C, T, M, H, S> for ProgressiveRenderer
 where
     C: Color,
-    H: HittableCollection,
-    M: Material<C, T>,
-    S: Sampler,
     T: Texture<C>,
+    M: Material<C, T>,
+    H: Hittable,
+    S: Sampler,
 {
     fn render(&mut self, scene: &Scene<C, T, M, H, S>, rng: &mut impl Rng) -> &Image {
         // Render 1 passes over the image

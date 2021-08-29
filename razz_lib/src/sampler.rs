@@ -5,7 +5,7 @@ use crate::{Float, Ray, Vec3};
 use crate::traits::Sampler;
 
 #[derive(Default, Debug)]
-pub struct SimpleCamera {
+pub struct BasicCamera {
     origin: Vec3,
     top_right: Vec3,
     horizontal: Vec3,
@@ -18,7 +18,7 @@ pub struct SimpleCamera {
     w: Vec3,
 }
 
-impl Sampler for SimpleCamera {
+impl Sampler for BasicCamera {
     fn get_ray(
         &self,
         pixel_x: usize,
@@ -37,7 +37,7 @@ impl Sampler for SimpleCamera {
     }
 }
 
-impl SimpleCamera {
+impl BasicCamera {
     pub fn new(
         from: Vec3,
         at: Vec3,

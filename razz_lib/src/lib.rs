@@ -46,11 +46,12 @@ where
     C: Color,
     T: Texture<C>,
     M: Material<C, T>,
-    H: HittableCollection,
+    H: Hittable,
     S: Sampler,
 {
     pub world: World<C, T, M, H>,
     pub sampler: S,
+    _hittable: PhantomData<H>,
     _color: PhantomData<C>,
 }
 
@@ -59,13 +60,14 @@ where
     C: Color,
     T: Texture<C>,
     M: Material<C, T>,
-    H: HittableCollection,
+    H: Hittable,
     S: Sampler,
 {
     pub fn new(world: World<C, T, M, H>, sampler: S) -> Self {
         Self {
             world,
             sampler,
+            _hittable: PhantomData,
             _color: PhantomData,
         }
     }
@@ -77,20 +79,21 @@ where
     C: Color,
     T: Texture<C>,
     M: Material<C, T>,
-    H: HittableCollection,
+    H: Hittable,
 {
     textures: SlotMap<TextureKey, T>,
     materials: SlotMap<MaterialKey, M>,
-    hittables: H,
+    hittables: HittableCollection<H>,
+    _hittable: PhantomData<H>,
     _color: PhantomData<C>,
 }
 
-impl<C, H, M, T> World<C, T, M, H>
+impl<C, T, M, H> World<C, T, M, H>
 where
     C: Color,
     T: Texture<C>,
     M: Material<C, T>,
-    H: HittableCollection,
+    H: Hittable,
 {
     fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> C {
         if depth <= 0 {
@@ -124,35 +127,48 @@ where
         self.materials.insert(material)
     }
 
-    pub fn push_hittable(&mut self, primative: H::Object) {
+    pub fn push_hittable(&mut self, primative: H) {
         self.hittables.push(primative)
     }
 }
 
-#[derive(Default, Debug)]
-pub struct HittableList<H: Hittable> {
-    objects: Vec<H>,
+#[derive(Debug)]
+pub enum HittableCollection<H: Hittable> {
+    List { primatives: Vec<H> },
 }
 
-impl<H: Hittable> HittableCollection for HittableList<H> {
-    type Object = H;
-    fn push(&mut self, obj: Self::Object) {
-        self.objects.push(obj)
+impl<H: Hittable> HittableCollection<H> {
+    fn push(&mut self, obj: H) {
+        match self {
+            HittableCollection::List { primatives } => primatives.push(obj),
+        }
     }
 }
 
-impl<H: Hittable> Hittable for HittableList<H> {
+impl<H: Hittable> Default for HittableCollection<H> {
+    fn default() -> Self {
+        Self::List {
+            primatives: Vec::new(),
+        }
+    }
+}
+
+impl<H: Hittable> Hittable for HittableCollection<H> {
     fn hit(&self, ray_in: &Ray, t_min: f32, t_max: f32) -> RaycastResult {
         let mut result = RaycastResult::Miss;
         let mut closest_time = t_max;
 
-        for obj in &self.objects {
-            match obj.hit(ray_in, t_min, closest_time) {
-                RaycastResult::Hit(rec) => {
-                    closest_time = rec.time;
-                    result = RaycastResult::Hit(rec);
+        match self {
+            HittableCollection::List { primatives } => {
+                for primative in primatives {
+                    match primative.hit(ray_in, t_min, closest_time) {
+                        RaycastResult::Hit(rec) => {
+                            closest_time = rec.time;
+                            result = RaycastResult::Hit(rec);
+                        }
+                        RaycastResult::Miss => (),
+                    }
                 }
-                RaycastResult::Miss => {}
             }
         }
 
@@ -164,8 +180,13 @@ impl<H: Hittable> Hittable for HittableList<H> {
             min: Vec3::ZERO,
             max: Vec3::ZERO,
         };
-        for obj in &self.objects {
-            bounds = BoundingBox::union(bounds, obj.bounds());
+
+        match self {
+            HittableCollection::List { primatives } => {
+                for primative in primatives {
+                    bounds = BoundingBox::union(bounds, primative.bounds());
+                }
+            }
         }
         bounds
     }

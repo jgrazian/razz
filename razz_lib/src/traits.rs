@@ -52,11 +52,6 @@ pub trait Hittable: Debug + Default {
     fn bounds(&self) -> BoundingBox;
 }
 
-pub trait HittableCollection: Debug + Default + Hittable {
-    type Object: Hittable;
-    fn push(&mut self, obj: Self::Object);
-}
-
 pub trait Sampler: Debug + Default {
     fn get_ray(
         &self,
@@ -68,13 +63,13 @@ pub trait Sampler: Debug + Default {
     ) -> Ray;
 }
 
-pub trait Renderer<C, H, M, S, T>: Debug
+pub trait Renderer<C, T, M, H, S>: Debug
 where
     C: Color,
-    H: HittableCollection,
-    M: Material<C, T>,
-    S: Sampler,
     T: Texture<C>,
+    M: Material<C, T>,
+    H: Hittable,
+    S: Sampler,
 {
     fn render(&mut self, scene: &Scene<C, T, M, H, S>, rng: &mut impl Rng) -> &Image;
 }
