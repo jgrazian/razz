@@ -1,8 +1,7 @@
 use rand::Rng;
 
 use crate::image::Image;
-use crate::traits::{Color, Material, Renderer, Sampler, Texture};
-use crate::{Float, Hittable, Scene};
+use crate::{Float, Scene};
 
 #[derive(Debug)]
 pub struct ProgressiveRenderer {
@@ -25,15 +24,8 @@ impl ProgressiveRenderer {
     }
 }
 
-impl<C, T, M, H, S> Renderer<C, T, M, H, S> for ProgressiveRenderer
-where
-    C: Color,
-    T: Texture<C>,
-    M: Material<C, T>,
-    H: Hittable,
-    S: Sampler,
-{
-    fn render(&mut self, scene: &Scene<C, T, M, H, S>, rng: &mut impl Rng) -> &Image {
+impl ProgressiveRenderer {
+    pub fn render(&mut self, scene: &Scene, rng: &mut impl Rng) -> &Image {
         // Render 1 passes over the image
         for j in 0..self.height {
             for i in 0..self.width {
@@ -47,7 +39,7 @@ where
                 } else {
                     let old_rgb = self.image.get_pixel_color(i, j);
                     let new_rgb = (old_rgb * self.num_samples as Float + pixel_rgb)
-                        / (self.num_samples as Float + 1.0);
+                        * (1.0 / (self.num_samples as Float + 1.0));
                     self.image.set_pixel_color(i, j, new_rgb);
                 }
             }

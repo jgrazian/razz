@@ -2,10 +2,8 @@ use rand::Rng;
 
 use crate::{Float, Ray, Vec3};
 
-use crate::traits::Sampler;
-
 #[derive(Default, Debug)]
-pub struct BasicCamera {
+pub struct Camera {
     origin: Vec3,
     top_right: Vec3,
     horizontal: Vec3,
@@ -18,8 +16,8 @@ pub struct BasicCamera {
     w: Vec3,
 }
 
-impl Sampler for BasicCamera {
-    fn get_ray(
+impl Camera {
+    pub fn get_ray(
         &self,
         pixel_x: usize,
         pixel_y: usize,
@@ -37,7 +35,7 @@ impl Sampler for BasicCamera {
     }
 }
 
-impl BasicCamera {
+impl Camera {
     pub fn new(
         from: Vec3,
         at: Vec3,

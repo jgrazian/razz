@@ -1,23 +1,21 @@
+mod camera;
 mod image;
 mod material;
 mod noise;
 mod primative;
 mod render;
-mod sampler;
 mod texture;
 mod traits;
-
-use std::marker::PhantomData;
 
 pub use glam::Vec3A as Vec3;
 use rand::Rng;
 use slotmap::{new_key_type, SlotMap};
 
+pub use camera::*;
 pub use image::*;
 pub use material::*;
 pub use primative::*;
 pub use render::*;
-pub use sampler::*;
 pub use texture::*;
 pub use traits::*;
 
@@ -41,63 +39,28 @@ impl Ray {
     }
 }
 
-pub struct Scene<C, T, M, H, S>
-where
-    C: Color,
-    T: Texture<C>,
-    M: Material<C, T>,
-    H: Hittable,
-    S: Sampler,
-{
-    pub world: World<C, T, M, H>,
-    pub sampler: S,
-    _hittable: PhantomData<H>,
-    _color: PhantomData<C>,
+pub struct Scene {
+    pub world: World,
+    pub sampler: Camera,
 }
 
-impl<C, T, M, H, S> Scene<C, T, M, H, S>
-where
-    C: Color,
-    T: Texture<C>,
-    M: Material<C, T>,
-    H: Hittable,
-    S: Sampler,
-{
-    pub fn new(world: World<C, T, M, H>, sampler: S) -> Self {
-        Self {
-            world,
-            sampler,
-            _hittable: PhantomData,
-            _color: PhantomData,
-        }
+impl Scene {
+    pub fn new(world: World, sampler: Camera) -> Self {
+        Self { world, sampler }
     }
 }
 
 #[derive(Default, Debug)]
-pub struct World<C, T, M, H>
-where
-    C: Color,
-    T: Texture<C>,
-    M: Material<C, T>,
-    H: Hittable,
-{
-    textures: SlotMap<TextureKey, T>,
-    materials: SlotMap<MaterialKey, M>,
-    hittables: HittableCollection<H>,
-    _hittable: PhantomData<H>,
-    _color: PhantomData<C>,
+pub struct World {
+    textures: SlotMap<TextureKey, Texture>,
+    materials: SlotMap<MaterialKey, Material>,
+    hittables: HittableCollection,
 }
 
-impl<C, T, M, H> World<C, T, M, H>
-where
-    C: Color,
-    T: Texture<C>,
-    M: Material<C, T>,
-    H: Hittable,
-{
-    fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> C {
+impl World {
+    fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> Rgba {
         if depth <= 0 {
-            return C::from_rgba(Rgba::ZERO);
+            return Rgba::ZERO;
         }
 
         match self.hittables.hit(ray_in, 0.001, Float::INFINITY) {
@@ -115,37 +78,37 @@ where
                     ScatterResult::Absorbed => emitted,
                 }
             }
-            RaycastResult::Miss => C::from_rgba(Rgba::ONE),
+            RaycastResult::Miss => Rgba::ONE,
         }
     }
 
-    pub fn push_texture(&mut self, texture: T) -> TextureKey {
+    pub fn push_texture(&mut self, texture: Texture) -> TextureKey {
         self.textures.insert(texture)
     }
 
-    pub fn push_material(&mut self, material: M) -> MaterialKey {
+    pub fn push_material(&mut self, material: Material) -> MaterialKey {
         self.materials.insert(material)
     }
 
-    pub fn push_hittable(&mut self, primative: H) {
+    pub fn push_hittable(&mut self, primative: Primative) {
         self.hittables.push(primative)
     }
 }
 
 #[derive(Debug)]
-pub enum HittableCollection<H: Hittable> {
-    List { primatives: Vec<H> },
+pub enum HittableCollection {
+    List { primatives: Vec<Primative> },
 }
 
-impl<H: Hittable> HittableCollection<H> {
-    fn push(&mut self, obj: H) {
+impl HittableCollection {
+    fn push(&mut self, obj: Primative) {
         match self {
             HittableCollection::List { primatives } => primatives.push(obj),
         }
     }
 }
 
-impl<H: Hittable> Default for HittableCollection<H> {
+impl Default for HittableCollection {
     fn default() -> Self {
         Self::List {
             primatives: Vec::new(),
@@ -153,7 +116,7 @@ impl<H: Hittable> Default for HittableCollection<H> {
     }
 }
 
-impl<H: Hittable> Hittable for HittableCollection<H> {
+impl Hittable for HittableCollection {
     fn hit(&self, ray_in: &Ray, t_min: f32, t_max: f32) -> RaycastResult {
         let mut result = RaycastResult::Miss;
         let mut closest_time = t_max;

@@ -95,7 +95,7 @@ pub struct State {
     render_data: RenderData,
     render_device: RenderDevice,
 
-    scene: Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera>,
+    scene: Scene,
     frame_number: u32,
 }
 
@@ -605,9 +605,9 @@ fn make_compute_pipeline(device: &wgpu::Device) -> (wgpu::ComputePipeline, wgpu:
     (compute_pipeline, compute_bind_group_layout)
 }
 
-fn basic_scene() -> Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera> {
+fn basic_scene() -> Scene {
     let aspect_ratio = 16.0 / 9.0;
-    let camera = BasicCamera::new(
+    let camera = Camera::new(
         Vec3::new(0.0, 0.0, 0.0),
         Vec3::new(0.0, 0.0, -1.0),
         90.0,
@@ -617,8 +617,8 @@ fn basic_scene() -> Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCam
     );
 
     let mut world = World::default();
-    let texture = world.push_texture(BasicTexture::default());
-    let material = world.push_material(BasicMaterial::Lambertian { albedo: texture });
+    let texture = world.push_texture(Texture::default());
+    let material = world.push_material(Material::Lambertian { albedo: texture });
     let _ground = world.push_hittable(Primative::Sphere {
         center: Vec3::new(0.0, -100.5, -1.0),
         radius: 100.0,
@@ -630,8 +630,7 @@ fn basic_scene() -> Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCam
         material,
     });
 
-    let scene: Scene<Rgba, BasicTexture, BasicMaterial, Primative, BasicCamera> =
-        Scene::new(world, camera);
+    let scene: Scene = Scene::new(world, camera);
 
     scene
 }
