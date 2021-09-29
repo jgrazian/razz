@@ -7,8 +7,8 @@ mod render;
 mod texture;
 mod traits;
 
-pub use glam::Vec3A as Vec3;
 use rand::Rng;
+use rust_bvh::{Bvh3A, RayHittable};
 use slotmap::{new_key_type, SlotMap};
 
 pub use camera::*;
@@ -19,25 +19,14 @@ pub use render::*;
 pub use texture::*;
 pub use traits::*;
 
-pub type Point3 = Vec3;
+pub use glam::Vec3A;
+pub type Point3 = Vec3A;
+pub type Ray = rust_bvh::Ray3A;
 pub type Float = f32;
 
 new_key_type! { pub struct PrimativeKey; }
 new_key_type! { pub struct MaterialKey; }
 new_key_type! { pub struct TextureKey; }
-
-#[derive(Debug)]
-pub struct Ray {
-    pub origin: Point3,
-    pub direction: Vec3,
-}
-
-impl Ray {
-    #[inline]
-    fn at(&self, t: Float) -> Point3 {
-        self.origin + t * self.direction
-    }
-}
 
 pub struct Scene {
     pub world: World,
@@ -51,34 +40,18 @@ impl Scene {
 }
 
 #[derive(Default, Debug)]
-pub struct World {
+pub struct WorldBuilder {
     textures: SlotMap<TextureKey, Texture>,
     materials: SlotMap<MaterialKey, Material>,
-    hittables: HittableCollection,
+    hittables: Vec<Primative>,
 }
 
-impl World {
-    fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> Rgba {
-        if depth <= 0 {
-            return Rgba::ZERO;
-        }
-
-        match self.hittables.hit(ray_in, 0.001, Float::INFINITY) {
-            RaycastResult::Hit(rec) => {
-                let material = self
-                    .materials
-                    .get(rec.material)
-                    .expect("No material found!");
-                let emitted = material.emit(rec.u, rec.v, rec.point, &self.textures);
-
-                match material.scatter(ray_in, &rec, &self.textures, rng) {
-                    ScatterResult::Scattered { ray_out, color } => {
-                        emitted + color * self.ray_color(&ray_out, rng, depth - 1)
-                    }
-                    ScatterResult::Absorbed => emitted,
-                }
-            }
-            RaycastResult::Miss => Rgba::ONE,
+impl WorldBuilder {
+    pub fn new() -> Self {
+        Self {
+            textures: SlotMap::default(),
+            materials: SlotMap::default(),
+            hittables: Vec::new(),
         }
     }
 
@@ -96,61 +69,44 @@ impl World {
 }
 
 #[derive(Debug)]
-pub enum HittableCollection {
-    List { primatives: Vec<Primative> },
+pub struct World {
+    textures: SlotMap<TextureKey, Texture>,
+    materials: SlotMap<MaterialKey, Material>,
+    bvh: Bvh3A<Primative>,
 }
 
-impl HittableCollection {
-    fn push(&mut self, obj: Primative) {
-        match self {
-            HittableCollection::List { primatives } => primatives.push(obj),
+impl World {
+    fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> Rgba {
+        if depth <= 0 {
+            return Rgba::ZERO;
         }
-    }
-}
 
-impl Default for HittableCollection {
-    fn default() -> Self {
-        Self::List {
-            primatives: Vec::new(),
-        }
-    }
-}
+        match self.bvh.ray_hit(ray_in, 0.001, Float::INFINITY) {
+            Some((_, hit_rec)) => {
+                let material = self
+                    .materials
+                    .get(hit_rec.material_key)
+                    .expect("No material found!");
+                let emitted = material.emit(hit_rec.u, hit_rec.v, hit_rec.point, &self.textures);
 
-impl Hittable for HittableCollection {
-    fn hit(&self, ray_in: &Ray, t_min: f32, t_max: f32) -> RaycastResult {
-        let mut result = RaycastResult::Miss;
-        let mut closest_time = t_max;
-
-        match self {
-            HittableCollection::List { primatives } => {
-                for primative in primatives {
-                    match primative.hit(ray_in, t_min, closest_time) {
-                        RaycastResult::Hit(rec) => {
-                            closest_time = rec.time;
-                            result = RaycastResult::Hit(rec);
-                        }
-                        RaycastResult::Miss => (),
+                match material.scatter(ray_in, &hit_rec, &self.textures, rng) {
+                    ScatterResult::Scattered { ray_out, color } => {
+                        emitted + color * self.ray_color(&ray_out, rng, depth - 1)
                     }
+                    ScatterResult::Absorbed => emitted,
                 }
             }
+            None => Rgba::ONE,
         }
-
-        result
     }
+}
 
-    fn bounds(&self) -> BoundingBox {
-        let mut bounds = BoundingBox {
-            min: Vec3::ZERO,
-            max: Vec3::ZERO,
-        };
-
-        match self {
-            HittableCollection::List { primatives } => {
-                for primative in primatives {
-                    bounds = BoundingBox::union(bounds, primative.bounds());
-                }
-            }
+impl From<WorldBuilder> for World {
+    fn from(builder: WorldBuilder) -> Self {
+        Self {
+            textures: builder.textures,
+            materials: builder.materials,
+            bvh: Bvh3A::build(builder.hittables),
         }
-        bounds
     }
 }

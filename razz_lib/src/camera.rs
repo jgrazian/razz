@@ -1,19 +1,19 @@
 use rand::Rng;
 
-use crate::{Float, Ray, Vec3};
+use crate::{Float, Ray, Vec3A};
 
 #[derive(Default, Debug)]
 pub struct Camera {
-    origin: Vec3,
-    top_right: Vec3,
-    horizontal: Vec3,
-    vertical: Vec3,
+    origin: Vec3A,
+    top_right: Vec3A,
+    horizontal: Vec3A,
+    vertical: Vec3A,
     lens_radius: Float,
     ar: Float,
 
-    u: Vec3,
-    v: Vec3,
-    w: Vec3,
+    u: Vec3A,
+    v: Vec3A,
+    w: Vec3A,
 }
 
 impl Camera {
@@ -37,8 +37,8 @@ impl Camera {
 
 impl Camera {
     pub fn new(
-        from: Vec3,
-        at: Vec3,
+        look_from: Vec3A,
+        look_at: Vec3A,
         vfov: Float,
         ar: Float,
         aperture: Float,
@@ -49,11 +49,11 @@ impl Camera {
         let viewport_height = 2.0 * h;
         let viewport_width = ar * viewport_height;
 
-        let w = (from - at).normalize();
-        let u = Vec3::cross(Vec3::new(0.0, 1.0, 0.0), w).normalize();
-        let v = Vec3::cross(w, u);
+        let w = (look_from - look_at).normalize();
+        let u = Vec3A::cross(Vec3A::new(0.0, 1.0, 0.0), w).normalize();
+        let v = Vec3A::cross(w, u);
 
-        let origin = from;
+        let origin = look_from;
         let horizontal = focus_dist * viewport_width * u;
         let vertical = focus_dist * viewport_height * v;
         let top_right = origin - (0.5 * horizontal) + (0.5 * vertical) - focus_dist * w;

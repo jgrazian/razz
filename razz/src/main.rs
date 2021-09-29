@@ -608,29 +608,41 @@ fn make_compute_pipeline(device: &wgpu::Device) -> (wgpu::ComputePipeline, wgpu:
 fn basic_scene() -> Scene {
     let aspect_ratio = 16.0 / 9.0;
     let camera = Camera::new(
-        Vec3::new(0.0, 0.0, 0.0),
-        Vec3::new(0.0, 0.0, -1.0),
+        Vec3A::new(0.0, 0.0, 0.0),
+        Vec3A::new(0.0, 0.0, -1.0),
         90.0,
         aspect_ratio,
         0.0,
         1.0,
     );
 
-    let mut world = World::default();
-    let texture = world.push_texture(Texture::default());
-    let material = world.push_material(Material::Lambertian { albedo: texture });
-    let _ground = world.push_hittable(Primative::Sphere {
-        center: Vec3::new(0.0, -100.5, -1.0),
+    let mut world_builder = WorldBuilder::default();
+    let texture = world_builder.push_texture(Texture::default());
+    let material_key = world_builder.push_material(Material::Lambertian { albedo: texture });
+    let _ground = world_builder.push_hittable(Primative::Sphere {
+        center: Vec3A::new(0.0, -100.5, -1.0),
         radius: 100.0,
-        material,
+        material_key,
     });
-    let _sphere = world.push_hittable(Primative::Sphere {
-        center: Vec3::new(0.0, 0.0, -1.0),
+    let _sphere = world_builder.push_hittable(Primative::Sphere {
+        center: Vec3A::new(0.0, 0.0, -1.0),
         radius: 0.5,
-        material,
+        material_key,
     });
+    let _tris = Triangle::vec_from(&vec![
+        // Triangle 1
+        [-2.0, 0.0, -2.0],
+        [2.0, 0.0, -2.0],
+        [2.0, 2.0, -2.0],
+        // Triangle 2
+        [2.0, 2.0, -2.001],
+        [-2.0, 2.0, -2.0],
+        [-2.0, 0.0, -2.0],
+    ]);
+    let _mesh = Primative::mesh(_tris, material_key);
+    let _mesh = world_builder.push_hittable(_mesh);
 
-    let scene: Scene = Scene::new(world, camera);
+    let scene: Scene = Scene::new(world_builder.into(), camera);
 
     scene
 }

@@ -1,7 +1,7 @@
 use crate::image::Rgba;
 use crate::primative::HitRecord;
 use crate::texture::Texture;
-use crate::{Float, Point3, Ray, TextureKey, Vec3};
+use crate::{Float, Point3, Ray, TextureKey, Vec3A};
 
 use rand::Rng;
 use slotmap::SlotMap;
@@ -107,7 +107,7 @@ fn metal_scatter(
         direction: reflected + fuzz * sample_unit_sphere(rng),
     };
 
-    return if Vec3::dot(scattered.direction, rec.normal) > 0.0 {
+    return if Vec3A::dot(scattered.direction, rec.normal) > 0.0 {
         ScatterResult::Scattered {
             ray_out: scattered,
             color: match texture_map.get(*albedo) {
@@ -130,7 +130,7 @@ fn dielectric_scatter(
     let refraction_ratio = if rec.front_face { 1.0 / ir } else { ir };
 
     let unit_dir = ray_in.direction.normalize();
-    let cos_theta = Vec3::dot(-unit_dir, rec.normal).min(1.0);
+    let cos_theta = Vec3A::dot(-unit_dir, rec.normal).min(1.0);
     let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
 
     let cannot_refract = refraction_ratio * sin_theta > 1.0;
@@ -151,18 +151,18 @@ fn dielectric_scatter(
 }
 
 #[inline]
-fn sample_unit_sphere<R: Rng>(rng: &mut R) -> Vec3 {
-    (rng.gen::<Vec3>() - 0.5 * Vec3::ONE).normalize()
+fn sample_unit_sphere<R: Rng>(rng: &mut R) -> Vec3A {
+    (rng.gen::<Vec3A>() - 0.5 * Vec3A::ONE).normalize()
 }
 
 #[inline]
-fn reflect(v: Vec3, n: Vec3) -> Vec3 {
-    v - 2.0 * Vec3::dot(v, n) * n
+fn reflect(v: Vec3A, n: Vec3A) -> Vec3A {
+    v - 2.0 * Vec3A::dot(v, n) * n
 }
 
 #[inline]
-fn refract(v: Vec3, n: Vec3, eta: Float) -> Vec3 {
-    let cos_theta = Vec3::dot(-v, n).min(1.0);
+fn refract(v: Vec3A, n: Vec3A, eta: Float) -> Vec3A {
+    let cos_theta = Vec3A::dot(-v, n).min(1.0);
     let perp = eta * (v + cos_theta * n);
     let parallel = -((1.0 - perp.length_squared()).abs().sqrt()) * n;
     perp + parallel
@@ -176,7 +176,7 @@ fn reflectance(cosine: Float, ref_idx: Float) -> Float {
 }
 
 #[inline]
-pub fn near_zero(v: Vec3) -> bool {
+pub fn near_zero(v: Vec3A) -> bool {
     const ETA: Float = 1e-8;
     (v.x.abs() < ETA) && (v.y.abs() < ETA) && (v.z.abs() < ETA)
 }

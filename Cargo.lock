@@ -1461,6 +1461,7 @@ version = "0.1.0"
 dependencies = [
  "glam",
  "rand",
+ "rust-bvh",
  "slotmap 1.0.5",
 ]
 
@@ -1486,6 +1487,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "284de9dae38774e2813aaabd7e947b4a6fe9b8c58c2309f754a487cdd50de1c2"
 dependencies = [
  "petgraph",
+]
+
+[[package]]
+name = "rust-bvh"
+version = "0.1.0"
+source = "git+https://github.com/jgrazian/rust-bvh#d8ccb50de783682c3f54d4318c2aad9ebc5270dd"
+dependencies = [
+ "glam",
 ]
 
 [[package]]

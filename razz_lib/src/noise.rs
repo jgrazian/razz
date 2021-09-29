@@ -1,4 +1,4 @@
-use crate::{Float, Point3, Vec3};
+use crate::{Float, Point3, Vec3A};
 
 use rand::{distributions::Uniform, Rng};
 
@@ -27,7 +27,7 @@ impl Noise {
 
 #[derive(Debug, Clone)]
 pub struct PerlinData {
-    ranvec: [Vec3; Self::POINT_COUNT],
+    ranvec: [Vec3A; Self::POINT_COUNT],
     perm_x: [usize; Self::POINT_COUNT],
     perm_y: [usize; Self::POINT_COUNT],
     perm_z: [usize; Self::POINT_COUNT],
@@ -38,10 +38,10 @@ impl PerlinData {
 
     #[inline]
     pub fn new<T: Rng>(rng: &mut T) -> Self {
-        let mut ranvec = [Vec3::ZERO; Self::POINT_COUNT];
+        let mut ranvec = [Vec3A::ZERO; Self::POINT_COUNT];
         ranvec
             .iter_mut()
-            .for_each(|v| *v = (rng.gen::<Vec3>() - 0.5 * Vec3::ONE).normalize());
+            .for_each(|v| *v = (rng.gen::<Vec3A>() - 0.5 * Vec3A::ONE).normalize());
 
         let perm_x = Self::generate_perm(rng);
         let perm_y = Self::generate_perm(rng);
@@ -65,7 +65,7 @@ impl PerlinData {
         let j = p.y.floor() as isize;
         let k = p.z.floor() as isize;
 
-        let mut c = [[[Vec3::new(0.0, 0.0, 0.0); 2]; 2]; 2];
+        let mut c = [[[Vec3A::new(0.0, 0.0, 0.0); 2]; 2]; 2];
 
         for di in 0..2 {
             for dj in 0..2 {
@@ -101,7 +101,7 @@ impl PerlinData {
     }
 
     #[inline]
-    fn perlin_interp(c: &[[[Vec3; 2]; 2]; 2], u: Float, v: Float, w: Float) -> Float {
+    fn perlin_interp(c: &[[[Vec3A; 2]; 2]; 2], u: Float, v: Float, w: Float) -> Float {
         let uu = u * u * (3.0 - 2.0 * u);
         let vv = v * v * (3.0 - 2.0 * v);
         let ww = w * w * (3.0 - 2.0 * w);
@@ -111,11 +111,11 @@ impl PerlinData {
         for i in 0..2 {
             for j in 0..2 {
                 for k in 0..2 {
-                    let weight_v = Vec3::new(u - i as Float, v - j as Float, w - k as Float);
+                    let weight_v = Vec3A::new(u - i as Float, v - j as Float, w - k as Float);
                     accum += (i as Float * uu + (1 - i) as Float * (1.0 - uu))
                         * (j as Float * vv + (1 - j) as Float * (1.0 - vv))
                         * (k as Float * ww + (1 - k) as Float * (1.0 - ww))
-                        * Vec3::dot(c[i][j][k], weight_v);
+                        * Vec3A::dot(c[i][j][k], weight_v);
                 }
             }
         }
