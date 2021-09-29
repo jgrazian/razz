@@ -1,6 +1,6 @@
 use rand::Rng;
 
-use crate::{Float, Ray, Vec3A};
+use crate::{Float, Ray3A, Vec3A};
 
 #[derive(Default, Debug)]
 pub struct Camera {
@@ -24,11 +24,11 @@ impl Camera {
         width: usize,
         height: usize,
         rng: &mut impl Rng,
-    ) -> Ray {
+    ) -> Ray3A {
         let u: Float = (pixel_x as Float + rng.gen::<Float>()) / ((width - 1) as Float);
         let v: Float = (pixel_y as Float + rng.gen::<Float>()) / ((height - 1) as Float);
 
-        Ray {
+        Ray3A {
             origin: self.origin,
             direction: self.top_right + (u * self.horizontal) - (v * self.vertical) - self.origin,
         }

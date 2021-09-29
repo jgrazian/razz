@@ -1,13 +1,13 @@
 use crate::image::Rgba;
 use crate::primative::HitRecord;
 use crate::texture::Texture;
-use crate::{Float, Point3, Ray, TextureKey, Vec3A};
+use crate::{Float, Point3, Ray3A, TextureKey, Vec3A};
 
 use rand::Rng;
 use slotmap::SlotMap;
 
 pub enum ScatterResult {
-    Scattered { ray_out: Ray, color: Rgba },
+    Scattered { ray_out: Ray3A, color: Rgba },
     Absorbed,
 }
 
@@ -23,7 +23,7 @@ impl Material {
     #[inline]
     pub fn scatter(
         &self,
-        ray_in: &Ray,
+        ray_in: &Ray3A,
         rec: &HitRecord,
         texture_map: &SlotMap<TextureKey, Texture>,
         rng: &mut impl Rng,
@@ -80,7 +80,7 @@ fn lambertian_scatter(
     }
 
     ScatterResult::Scattered {
-        ray_out: Ray {
+        ray_out: Ray3A {
             origin: rec.point,
             direction: scatter_dir,
         },
@@ -95,14 +95,14 @@ fn lambertian_scatter(
 fn metal_scatter(
     albedo: &TextureKey,
     fuzz: Float,
-    ray_in: &Ray,
+    ray_in: &Ray3A,
     rec: &HitRecord,
     texture_map: &SlotMap<TextureKey, Texture>,
     rng: &mut impl Rng,
 ) -> ScatterResult {
     let reflected = reflect(ray_in.direction.normalize(), rec.normal);
 
-    let scattered = Ray {
+    let scattered = Ray3A {
         origin: rec.point,
         direction: reflected + fuzz * sample_unit_sphere(rng),
     };
@@ -123,7 +123,7 @@ fn metal_scatter(
 #[inline]
 fn dielectric_scatter(
     ir: Float,
-    ray_in: &Ray,
+    ray_in: &Ray3A,
     rec: &HitRecord,
     rng: &mut impl Rng,
 ) -> ScatterResult {
@@ -142,7 +142,7 @@ fn dielectric_scatter(
     };
 
     ScatterResult::Scattered {
-        ray_out: Ray {
+        ray_out: Ray3A {
             origin: rec.point,
             direction: dir,
         },

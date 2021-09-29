@@ -1,6 +1,6 @@
-use crate::{Float, MaterialKey, Point3, Ray, Vec3A};
+use crate::{Float, MaterialKey, Point3, Ray3A, Vec3A};
 
-use rust_bvh::{Bounded, Bounds3A, Bvh3A, Ray3A, RayHittable};
+use boxtree::{Bounded, Bounds3A, Bvh3A, RayHittable};
 
 const PI: Float = std::f64::consts::PI as Float;
 
@@ -184,7 +184,7 @@ impl RayHittable<Bounds3A> for Primative {
 }
 
 #[inline(always)]
-fn set_front_face(r: &Ray, outward_normal: Vec3A) -> (Vec3A, bool) {
+fn set_front_face(r: &Ray3A, outward_normal: Vec3A) -> (Vec3A, bool) {
     let front_face = Vec3A::dot(r.direction, outward_normal) < 0.0;
     if front_face {
         (outward_normal, front_face)
@@ -205,7 +205,7 @@ fn sphere_uv(normal: &Vec3A) -> (Float, Float) {
 fn sphere_hit(
     center: Vec3A,
     radius: Float,
-    r: &Ray,
+    r: &Ray3A,
     t_min: Float,
     t_max: Float,
 ) -> Option<(f32, HitRecord)> {

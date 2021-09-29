@@ -7,8 +7,9 @@ mod render;
 mod texture;
 mod traits;
 
+pub use boxtree::Ray3A;
+use boxtree::{Bvh3A, RayHittable};
 use rand::Rng;
-use rust_bvh::{Bvh3A, RayHittable};
 use slotmap::{new_key_type, SlotMap};
 
 pub use camera::*;
@@ -21,7 +22,7 @@ pub use traits::*;
 
 pub use glam::Vec3A;
 pub type Point3 = Vec3A;
-pub type Ray = rust_bvh::Ray3A;
+
 pub type Float = f32;
 
 new_key_type! { pub struct PrimativeKey; }
@@ -76,7 +77,7 @@ pub struct World {
 }
 
 impl World {
-    fn ray_color(&self, ray_in: &Ray, rng: &mut impl Rng, depth: usize) -> Rgba {
+    fn ray_color(&self, ray_in: &Ray3A, rng: &mut impl Rng, depth: usize) -> Rgba {
         if depth <= 0 {
             return Rgba::ZERO;
         }
