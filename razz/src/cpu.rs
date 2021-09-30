@@ -1,7 +1,7 @@
 use crate::{basic_scene, RenderData, State};
 
 use rand::thread_rng;
-use razz_lib::{ProgressiveRenderer, Scene};
+use razz_lib::{ParallelRenderer, ProgressiveRenderer, Scene};
 use winit::{event::*, window::Window};
 
 pub struct CpuState {
@@ -14,7 +14,7 @@ pub struct CpuState {
 
     render_data: RenderData,
 
-    renderer: ProgressiveRenderer,
+    renderer: ParallelRenderer,
     scene: Scene,
     frame_number: u32,
 }
@@ -90,7 +90,8 @@ impl CpuState {
             render_texture_views,
         };
 
-        let renderer = ProgressiveRenderer::new(size.width as usize, size.height as usize, 5);
+        // let renderer = ProgressiveRenderer::new(size.width as usize, size.height as usize, 5);
+        let renderer = ParallelRenderer::new(size.width as usize, size.height as usize, 5);
 
         let scene = basic_scene();
 
@@ -260,8 +261,10 @@ impl State for CpuState {
             }),
         ];
 
+        // self.renderer =
+        //     ProgressiveRenderer::new(self.size.width as usize, self.size.height as usize, 5);
         self.renderer =
-            ProgressiveRenderer::new(self.size.width as usize, self.size.height as usize, 5);
+            ParallelRenderer::new(self.size.width as usize, self.size.height as usize, 5);
     }
 
     fn input(&mut self, _event: &WindowEvent) -> bool {
@@ -285,7 +288,8 @@ impl State for CpuState {
                 mip_level: 0,
                 origin: wgpu::Origin3d::ZERO,
             },
-            self.renderer.render(&self.scene, &mut rng).as_bytes(),
+            // self.renderer.render(&self.scene, &mut rng).as_bytes(),
+            self.renderer.render(&self.scene).as_bytes(),
             wgpu::ImageDataLayout {
                 offset: 0,
                 bytes_per_row: std::num::NonZeroU32::new(4 * 4 * self.size.width),

@@ -1,6 +1,6 @@
-use rand::Rng;
-
 use crate::{Float, Ray3A, Vec3A};
+
+use rand::Rng;
 
 #[derive(Default, Debug)]
 pub struct Camera {

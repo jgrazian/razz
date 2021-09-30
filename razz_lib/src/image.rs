@@ -1,6 +1,6 @@
-use std::ops::{Add, Mul};
-
 use crate::Float;
+
+use std::ops::{Add, Mul};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rgba(glam::Vec4);
@@ -28,6 +28,10 @@ impl Rgba {
     pub fn splat(v: Float) -> Self {
         Self(glam::Vec4::splat(v))
     }
+
+    pub fn to_array(&self) -> [f32; 4] {
+        self.0.into()
+    }
 }
 
 impl Add for Rgba {
@@ -54,11 +58,11 @@ impl Mul<f32> for Rgba {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Image {
     pub width: usize,
     pub height: usize,
-    data: Vec<Float>,
+    pub data: Vec<Float>,
 }
 
 impl Image {
@@ -67,6 +71,16 @@ impl Image {
             width,
             height,
             data: vec![0.0; width * height * 4],
+        }
+    }
+
+    pub fn from_vec(width: usize, height: usize, data: Vec<f32>) -> Self {
+        assert_eq!(data.len(), width * height * 4);
+
+        Self {
+            width,
+            height,
+            data,
         }
     }
 

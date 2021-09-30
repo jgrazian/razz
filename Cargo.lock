@@ -1470,6 +1470,7 @@ dependencies = [
  "boxtree",
  "glam",
  "rand",
+ "rayon",
  "slotmap 1.0.5",
 ]
 

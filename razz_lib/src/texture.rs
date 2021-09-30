@@ -1,8 +1,8 @@
-use slotmap::SlotMap;
-
 use crate::image::Rgba;
 use crate::noise::*;
 use crate::{Float, Point3, TextureKey};
+
+use slotmap::SlotMap;
 
 #[derive(Debug)]
 pub enum Texture {
