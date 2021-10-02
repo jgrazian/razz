@@ -2,8 +2,8 @@ mod camera;
 mod image;
 mod material;
 mod noise;
-mod primative;
 mod render;
+mod shape;
 mod texture;
 mod traits;
 
@@ -15,8 +15,8 @@ use slotmap::{new_key_type, SlotMap};
 pub use camera::*;
 pub use image::*;
 pub use material::*;
-pub use primative::*;
 pub use render::*;
+pub use shape::*;
 pub use texture::*;
 pub use traits::*;
 
@@ -97,7 +97,7 @@ impl World {
                     ScatterResult::Absorbed => emitted,
                 }
             }
-            None => Rgba::ONE,
+            None => Rgba::ZERO,
         }
     }
 }

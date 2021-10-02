@@ -1,5 +1,5 @@
 use crate::image::Rgba;
-use crate::primative::HitRecord;
+use crate::shape::{Face, HitRecord};
 use crate::texture::Texture;
 use crate::{Float, Point3, Ray3A, TextureKey, Vec3A};
 
@@ -127,7 +127,10 @@ fn dielectric_scatter(
     rec: &HitRecord,
     rng: &mut impl Rng,
 ) -> ScatterResult {
-    let refraction_ratio = if rec.front_face { 1.0 / ir } else { ir };
+    let refraction_ratio = match rec.face {
+        Face::Front => 1.0 / ir,
+        Face::Back => ir,
+    };
 
     let unit_dir = ray_in.direction.normalize();
     let cos_theta = Vec3A::dot(-unit_dir, rec.normal).min(1.0);

@@ -1,4 +1,4 @@
-use crate::{basic_scene, RenderData, State};
+use crate::{basic_scene_01, basic_scene_02, RenderData, State};
 
 use rand::thread_rng;
 use razz_lib::{ParallelRenderer, ProgressiveRenderer, Scene};
@@ -93,7 +93,7 @@ impl CpuState {
         // let renderer = ProgressiveRenderer::new(size.width as usize, size.height as usize, 5);
         let renderer = ParallelRenderer::new(size.width as usize, size.height as usize, 5);
 
-        let scene = basic_scene();
+        let scene = basic_scene_02();
 
         Self {
             surface,
@@ -274,7 +274,10 @@ impl State for CpuState {
     fn update(&mut self) {}
 
     fn render(&mut self) -> Result<(), wgpu::SwapChainError> {
-        dbg!(self.frame_number);
+        if self.frame_number % 10 == 0 {
+            println!("Frame number: {}", self.frame_number);
+        }
+
         let mut encoder = self
             .device
             .create_command_encoder(&wgpu::CommandEncoderDescriptor {

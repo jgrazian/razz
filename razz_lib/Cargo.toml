@@ -11,3 +11,4 @@ rand = "0.8.4"
 glam = { version = "0.17.3", features = ["rand"] }
 slotmap = "1.0.5"
 rayon = "1.5"
+tobj = { version = "3.2.0", default-features = false }
