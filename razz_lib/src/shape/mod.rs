@@ -1,7 +1,7 @@
 mod mesh;
 mod sphere;
 
-use std::{fmt::Debug, path::Path};
+use std::{fmt::Debug, path::Path, sync::Arc};
 
 use crate::{Float, MaterialKey, Point3, Ray3A, Vec3A};
 pub use mesh::{Mesh, Triangle};
@@ -47,7 +47,7 @@ pub struct Transform {
 #[derive(Debug, Clone)]
 pub enum Primative {
     Sphere(Sphere),
-    Mesh(Mesh),
+    Mesh(Arc<Mesh>),
 }
 
 impl Primative {
@@ -55,8 +55,12 @@ impl Primative {
         Self::Sphere(Sphere::new(center, radius, material_key))
     }
 
-    pub fn mesh(triangles: Vec<Triangle>) -> Self {
-        Self::Mesh(Mesh::new(triangles))
+    pub fn mesh(
+        vertices: Vec<Point3>,
+        indices: Vec<(usize, usize, usize)>,
+        material_key: MaterialKey,
+    ) -> Self {
+        Self::Mesh(Mesh::new(vertices, indices, material_key))
     }
 
     pub fn from_obj(path: impl AsRef<Path> + Debug, material_key: MaterialKey) -> Self {

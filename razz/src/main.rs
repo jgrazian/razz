@@ -151,22 +151,22 @@ fn basic_scene_01() -> Scene {
         0.5,
         material_key,
     ));
-    let _tris = Triangle::vec_from(
-        &vec![
+
+    let _mesh = Primative::mesh(
+        vec![
             // Triangle 1
-            [-2.0, 0.0, -2.0],
-            [2.0, 0.0, -2.0],
-            [2.0, 2.0, -2.0],
+            [-2.0, 0.0, -2.0].into(),
+            [2.0, 0.0, -2.0].into(),
+            [2.0, 2.0, -2.0].into(),
             // Triangle 2
-            [2.0, 2.0, -2.001],
-            [-2.0, 2.0, -2.0],
-            [-2.0, 0.0, -2.0],
+            [2.0, 2.0, -2.001].into(),
+            [-2.0, 2.0, -2.0].into(),
+            [-2.0, 0.0, -2.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         material_key,
     );
-    dbg!(&world_builder);
-    dbg!(&_tris);
-    let _mesh = Primative::mesh(_tris);
+
     let _mesh = world_builder.push_hittable(_mesh);
 
     let scene: Scene = Scene::new(world_builder.into(), camera);
@@ -177,8 +177,7 @@ fn basic_scene_01() -> Scene {
 fn basic_scene_02() -> Scene {
     let mut world_builder = WorldBuilder::default();
 
-    let (camera, mesh) = cornell_box(&mut world_builder);
-    world_builder.push_hittable(mesh);
+    let camera = build_cornell_box(&mut world_builder);
 
     let blue_texture = world_builder.push_texture(Texture::Solid {
         color: Rgba::new(0.2, 0.2, 0.6, 1.0),
@@ -187,7 +186,7 @@ fn basic_scene_02() -> Scene {
         albedo: blue_texture,
         fuzz: 0.01,
     });
-    let glass_material = world_builder.push_material(Material::Dielectric { ir: 1.7 });
+    let _glass_material = world_builder.push_material(Material::Dielectric { ir: 1.7 });
     let light_texture = world_builder.push_texture(Texture::Solid {
         color: Rgba::new(1.0, 1.0, 1.0, 1.0),
     });
@@ -206,7 +205,7 @@ fn basic_scene_02() -> Scene {
     scene
 }
 
-fn cornell_box(world_builder: &mut WorldBuilder) -> (Camera, Primative) {
+fn build_cornell_box(world_builder: &mut WorldBuilder) -> Camera {
     let camera = Camera::new(
         Vec3A::new(278.0, 278.0, -800.0),
         Vec3A::new(278.0, 278.0, 0.0),
@@ -242,81 +241,90 @@ fn cornell_box(world_builder: &mut WorldBuilder) -> (Camera, Primative) {
         emit: light_texture,
     });
 
-    let mut red_wall = Triangle::vec_from(
-        &vec![
-            [555.0, 0.0, 0.0],
-            [555.0, 555.0, 0.0],
-            [555.0, 555.0, 555.0],
-            [555.0, 555.0, 555.0],
-            [555.0, 0.0, 555.0],
-            [555.0001, 0.0, 0.0],
+    let red_wall = Primative::mesh(
+        vec![
+            [555.0, 0.0, 0.0].into(),
+            [555.0, 555.0, 0.0].into(),
+            [555.0, 555.0, 555.0].into(),
+            [555.0, 555.0, 555.0].into(),
+            [555.0, 0.0, 555.0].into(),
+            [555.0001, 0.0, 0.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         red_material,
     );
-    let mut green_wall = Triangle::vec_from(
-        &vec![
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 555.0],
-            [0.0, 555.0, 555.0],
-            [0.0, 555.0, 555.0],
-            [0.0, 555.0, 0.0],
-            [0.0001, 0.0, 0.0],
+
+    let green_wall = Primative::mesh(
+        vec![
+            [0.0, 0.0, 0.0].into(),
+            [0.0, 0.0, 555.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [0.0, 555.0, 0.0].into(),
+            [0.0001, 0.0, 0.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         green_material,
     );
-    let mut white_wall = Triangle::vec_from(
-        &vec![
-            [555.0, 0.0, 555.0],
-            [0.0, 0.0, 555.0],
-            [0.0, 555.0, 555.0],
-            [0.0, 555.0, 555.0],
-            [555.0, 555.0, 555.0],
-            [555.0, 0.0, 555.0001],
+
+    let white_wall = Primative::mesh(
+        vec![
+            [555.0, 0.0, 555.0].into(),
+            [0.0, 0.0, 555.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [555.0, 555.0, 555.0].into(),
+            [555.0, 0.0, 555.0001].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         white_material,
     );
-    let mut floor = Triangle::vec_from(
-        &vec![
-            [555.0, 0.0, 0.0],
-            [0.0, 0.0, 0.0],
-            [0.0, 0.0, 555.0],
-            [0.0, 0.0, 555.0],
-            [555.0, 0.0, 555.0],
-            [555.0, 0.0001, 0.0],
+
+    let floor = Primative::mesh(
+        vec![
+            [555.0, 0.0, 0.0].into(),
+            [0.0, 0.0, 0.0].into(),
+            [0.0, 0.0, 555.0].into(),
+            [0.0, 0.0, 555.0].into(),
+            [555.0, 0.0, 555.0].into(),
+            [555.0, 0.0001, 0.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         white_material,
     );
-    let mut ceiling = Triangle::vec_from(
-        &vec![
-            [555.0, 555.0, 0.0],
-            [0.0, 555.0, 0.0],
-            [0.0, 555.0, 555.0],
-            [0.0, 555.0, 555.0],
-            [555.0, 555.0, 555.0],
-            [555.0, 555.0001, 0.0],
+
+    let ceiling = Primative::mesh(
+        vec![
+            [555.0, 555.0, 0.0].into(),
+            [0.0, 555.0, 0.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [0.0, 555.0, 555.0].into(),
+            [555.0, 555.0, 555.0].into(),
+            [555.0, 555.0001, 0.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         white_material,
     );
-    let mut light = Triangle::vec_from(
-        &vec![
-            [213.0, 554.0, 227.0],
-            [343.0, 554.0, 227.0],
-            [343.0, 554.0, 332.0],
-            [343.0, 554.0, 332.0],
-            [213.0, 554.0, 332.0],
-            [213.0, 554.0001, 227.0],
+
+    let light = Primative::mesh(
+        vec![
+            [213.0, 554.0, 227.0].into(),
+            [343.0, 554.0, 227.0].into(),
+            [343.0, 554.0, 332.0].into(),
+            [343.0, 554.0, 332.0].into(),
+            [213.0, 554.0, 332.0].into(),
+            [213.0, 554.0001, 227.0].into(),
         ],
+        vec![(0, 1, 2), (3, 4, 5)],
         light_material,
     );
 
-    red_wall.append(&mut green_wall);
-    red_wall.append(&mut white_wall);
-    red_wall.append(&mut floor);
-    red_wall.append(&mut ceiling);
-    red_wall.append(&mut light);
+    world_builder.push_hittable(red_wall);
+    world_builder.push_hittable(green_wall);
+    world_builder.push_hittable(white_wall);
+    world_builder.push_hittable(floor);
+    world_builder.push_hittable(ceiling);
+    world_builder.push_hittable(light);
 
-    let mesh = Primative::mesh(red_wall);
-    dbg!(&mesh);
-
-    (camera, mesh)
+    camera
 }

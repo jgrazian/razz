@@ -2,7 +2,6 @@ use crate::{basic_scene_01, RenderData, State};
 
 use rand::thread_rng;
 use razz_lib::Scene;
-use wgpu::util::DeviceExt;
 use winit::{event::*, window::Window};
 
 struct ComputeData {
@@ -22,7 +21,7 @@ pub struct GpuState {
     render_data: RenderData,
     compute_data: ComputeData,
 
-    scene: Scene,
+    _scene: Scene,
     frame_number: u32,
 }
 
@@ -167,7 +166,7 @@ impl GpuState {
             compute_bind_groups,
         };
 
-        let scene = basic_scene_01();
+        let _scene = basic_scene_01();
 
         Self {
             surface,
@@ -178,7 +177,7 @@ impl GpuState {
             size,
             render_data,
             compute_data,
-            scene,
+            _scene,
             frame_number: 0,
         }
     }
@@ -449,7 +448,7 @@ impl State for GpuState {
                 label: Some("Render Encoder"),
             });
 
-        let mut rng = thread_rng();
+        let mut _rng = thread_rng();
         {
             let mut compute_pass = encoder.begin_compute_pass(&wgpu::ComputePassDescriptor {
                 label: Some("Compute Pass"),

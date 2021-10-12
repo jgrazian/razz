@@ -1,37 +1,32 @@
 use super::*;
+use std::sync::Arc;
 
 use glam::Affine3A;
 
 #[derive(Debug, Clone)]
 pub struct Triangle {
-    v0: Vec3A,
-    v1: Vec3A,
-    v2: Vec3A,
-    material_key: MaterialKey,
+    mesh: Arc<Mesh>,
+    index: usize,
 }
 
 impl Triangle {
-    pub fn new(v0: Point3, v1: Point3, v2: Point3, material_key: MaterialKey) -> Self {
-        Self {
-            v0,
-            v1,
-            v2,
-            material_key,
-        }
-    }
+    fn vertices(&self) -> (Point3, Point3, Point3) {
+        let (i0, i1, i2) = self.mesh.indices[self.index];
+        let v0 = self.mesh.vertices[i0];
+        let v1 = self.mesh.vertices[i1];
+        let v2 = self.mesh.vertices[i2];
 
-    pub fn vec_from(v: &[[f32; 3]], material_key: MaterialKey) -> Vec<Self> {
-        v.chunks_exact(3)
-            .map(|v| (v, material_key).into())
-            .collect()
+        (v0, v1, v2)
     }
 }
 
 impl Bounded<Bounds3A> for Triangle {
     fn bounds(&self) -> Bounds3A {
+        let (v0, v1, v2) = self.vertices();
+
         Bounds3A {
-            min: self.v0.min(self.v1).min(self.v2),
-            max: self.v0.max(self.v1).max(self.v2),
+            min: v0.min(v1).min(v2),
+            max: v0.max(v1).max(v2),
         }
     }
 }
@@ -40,8 +35,10 @@ impl RayHittable<Bounds3A> for Triangle {
     type Item = HitRecord;
 
     fn ray_hit(&self, ray: &Ray3A, t_min: f32, t_max: f32) -> Option<(f32, Self::Item)> {
-        let v0v1 = self.v1 - self.v0;
-        let v0v2 = self.v2 - self.v0;
+        let (v0, v1, v2) = self.vertices();
+
+        let v0v1 = v1 - v0;
+        let v0v2 = v2 - v0;
         let pvec = ray.direction.cross(v0v2);
         let det = v0v1.dot(pvec);
 
@@ -51,7 +48,7 @@ impl RayHittable<Bounds3A> for Triangle {
 
         let inv_det = 1.0 / det;
 
-        let tvec = ray.origin - self.v0;
+        let tvec = ray.origin - v0;
         let u = tvec.dot(pvec) * inv_det;
         if u < 0.0 || u > 1.0 {
             return None;
@@ -80,47 +77,55 @@ impl RayHittable<Bounds3A> for Triangle {
                 u,
                 v,
                 face,
-                material_key: self.material_key,
+                material_key: self.mesh.material_key,
             },
         ))
-    }
-}
-
-impl From<([Point3; 3], MaterialKey)> for Triangle {
-    fn from(v: ([Point3; 3], MaterialKey)) -> Self {
-        Self {
-            v0: v.0[0].into(),
-            v1: v.0[1].into(),
-            v2: v.0[2].into(),
-            material_key: v.1,
-        }
-    }
-}
-
-impl From<(&[[f32; 3]], MaterialKey)> for Triangle {
-    fn from(v: (&[[f32; 3]], MaterialKey)) -> Self {
-        Self {
-            v0: v.0[0].into(),
-            v1: v.0[1].into(),
-            v2: v.0[2].into(),
-            material_key: v.1,
-        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Mesh {
     bvh: Bvh3A<Triangle>,
+
+    vertices: Vec<Point3>,
+    indices: Vec<(usize, usize, usize)>,
+
+    material_key: MaterialKey,
 }
 
 impl Mesh {
-    pub fn new(triangles: Vec<Triangle>) -> Self {
-        Self {
-            bvh: Bvh3A::build(triangles),
+    pub fn new(
+        vertices: Vec<Point3>,
+        indices: Vec<(usize, usize, usize)>,
+        material_key: MaterialKey,
+    ) -> Arc<Self> {
+        let mesh = Self {
+            bvh: Bvh3A::build(vec![]),
+            vertices,
+            indices,
+            material_key,
+        };
+
+        let mesh = Arc::new(mesh);
+        let triangles = (0..mesh.indices.len())
+            .map(|i| Triangle {
+                mesh: Arc::clone(&mesh),
+                index: i,
+            })
+            .collect();
+        let bvh = Bvh3A::build(triangles);
+
+        // SAFTEY: This is safe. Only mutate once during construction to set the bvh.
+        unsafe {
+            let ptr = Arc::as_ptr(&mesh) as *mut mesh::Mesh;
+            let mesh = &mut *ptr;
+            mesh.bvh = bvh;
         }
+
+        mesh
     }
 
-    pub fn from_obj(path: impl AsRef<Path> + Debug, material_key: MaterialKey) -> Self {
+    pub fn from_obj(path: impl AsRef<Path> + Debug, material_key: MaterialKey) -> Arc<Self> {
         let affine = Affine3A::from_scale_rotation_translation(
             glam::Vec3::splat(10.0),
             glam::Quat::from_rotation_x(3.14159 / 2.0),
@@ -129,42 +134,35 @@ impl Mesh {
         let obj = tobj::load_obj(
             path,
             &tobj::LoadOptions {
-                single_index: false,
-                triangulate: false,
+                single_index: true,
+                triangulate: true,
                 ..Default::default()
             },
         );
 
         let (models, _) = obj.expect("Failed to load OBJ file");
 
-        let mut triangles = Vec::new();
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
         for model in models {
             let mesh = &model.mesh;
 
-            let verts: Vec<_> = mesh
+            let mesh_indices: Vec<_> = mesh
                 .indices
-                .iter()
-                .map(|c| {
-                    [
-                        mesh.positions[*c as usize * 3 + 0],
-                        mesh.positions[*c as usize * 3 + 1],
-                        mesh.positions[*c as usize * 3 + 2],
-                    ]
-                })
+                .chunks(3)
+                .map(|c| (c[0] as usize, c[1] as usize, c[2] as usize))
+                .collect();
+            let mesh_vertices: Vec<_> = mesh
+                .positions
+                .chunks(3)
+                .map(|c| affine.transform_point3a(Point3::new(c[0], c[1], c[2])))
                 .collect();
 
-            triangles.extend(Triangle::vec_from(&verts, material_key));
+            indices.extend(mesh_indices);
+            vertices.extend(mesh_vertices);
         }
 
-        triangles.iter_mut().for_each(|t| {
-            t.v0 = affine.transform_point3a(t.v0);
-            t.v1 = affine.transform_point3a(t.v1);
-            t.v2 = affine.transform_point3a(t.v2)
-        });
-
-        Self {
-            bvh: Bvh3A::build(triangles),
-        }
+        Self::new(vertices, indices, material_key)
     }
 }
 
@@ -181,29 +179,3 @@ impl RayHittable<Bounds3A> for Mesh {
         self.bvh.ray_hit(ray, t_min, t_max)
     }
 }
-// #[derive(Debug, Clone)]
-// pub struct Mesh {
-//     pub indices: Vec<(usize, usize, usize)>,
-//     pub vertices: Vec<Point3>,
-//     pub normals: Option<Vec<Vec3A>>,
-//     pub tangents: Option<Vec<Vec3A>>,
-//     pub uvs: Option<Vec<Vec2>>,
-// }
-
-// impl Mesh {
-//     pub fn new(
-//         indices: Vec<(usize, usize, usize)>,
-//         vertices: Vec<Point3>,
-//         normals: Option<Vec<Vec3A>>,
-//         tangents: Option<Vec<Vec3A>>,
-//         uvs: Option<Vec<Vec2>>,
-//     ) -> Self {
-//         Self {
-//             indices,
-//             vertices,
-//             normals,
-//             tangents,
-//             uvs,
-//         }
-//     }
-// }

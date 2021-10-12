@@ -1,7 +1,7 @@
-use crate::{basic_scene_01, basic_scene_02, RenderData, State};
+use crate::{basic_scene_02, RenderData, State};
 
 use rand::thread_rng;
-use razz_lib::{ParallelRenderer, ProgressiveRenderer, Scene};
+use razz_lib::{ParallelRenderer, Scene};
 use winit::{event::*, window::Window};
 
 pub struct CpuState {
@@ -284,7 +284,7 @@ impl State for CpuState {
                 label: Some("Render Encoder"),
             });
 
-        let mut rng = thread_rng();
+        let mut _rng = thread_rng();
         self.queue.write_texture(
             wgpu::ImageCopyTexture {
                 texture: &self.render_data.render_textures[(self.frame_number % 2) as usize],
